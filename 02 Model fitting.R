@@ -5,6 +5,10 @@
 # This script shows the steps followed to fit a stock-recruitment model to
 # in the file 'WBFT_S-R.csv'
 
+# clear workspace before we start
+rm(list = ls())
+
+
 #==============================================================================
 # Load and explore data
 #==============================================================================
@@ -28,45 +32,24 @@ tuna$ssb
 tuna$rec
 
 # initial plot of SSB vs. recruits
-plot(tuna$ssb, tuna$rec,
+plot(rec ~ ssb,
+     data = tuna, # look in tuna for x and y values
      xlab = 'Spawning Stock Biomass (tonnes)',
      ylab = 'Age-1 Recruitment')
 
-# A fancier plot
-# see:
-#   http://www.statmethods.net/advgraphs/parameters.html
-plotTunaSR <- function() {
-  # for some handy info on plotting parameters
-  par(mar = c(4, 5, 1, 1)) # modify margins
-  # base plot using formula this time
-  plot(rec ~ ssb,
-       data = tuna, # look in tuna for x and y values
-       xlim = c(0, max(ssb)), # set x limits
-       ylim = c(0, max(rec)), # set y limits
-       pch = 19, col = "blue", cex = 0.7, # set plotting character (pch), color and size (cex)
-       axes = FALSE, ann = FALSE) # don;t plot axes and no annotation
 
-  # x axis
-  axis(1, mgp = c(2, 0.4, 0), tck = -0.01)
-  # x label with positioning settings (mgp)
-  title(xlab = 'Spawning Stock Biomass (tonnes)', font.lab = 2, mgp = c(2, 0.5, 0))
+# probably better to set x and y limits to start at zero
+plot(rec ~ ssb,
+     data = tuna, # look in tuna for x and y values
+     xlim = c(0, max(ssb)), # set x limits
+     ylim = c(0, max(rec)), # set y limits
+     xlab = 'Spawning Stock Biomass (tonnes)',
+     ylab = 'Age-1 Recruitment')
 
-  # y axis with formated labels
-  at.y <- pretty(c(0, max(tuna$rec)))
-  axis(2, at = at.y, labels = sprintf("%i", at.y), tck = -0.01, las = 2, mgp = c(4, 0.4, 0))
-  # y label with positioning settings (mgp)
-  title(ylab = 'Age-1 Recruitment', font.lab = 2, mgp = c(3.7, 0.4, 0))
-
-  # but an "L" shaped box rounf the plot
-  box(bty = "l")
-  # finally reset old par settings
-}
-
-plotTunaSR()
 
 ###############################################################################
 # We are now going to demonstrate the same techniques employed in the spreadsheet
-# tutorial for estimating SR models
+# solution to the assignment
 ###############################################################################
 
 #==============================================================================
@@ -75,219 +58,339 @@ plotTunaSR()
 
 
 #------------------------------------------------------------------------------
-# (x) using glm with the inverse link and gamma errors
+# (1) Calculate predicted R for each year
+# Rpred = b1 * S / (b2 + S)
 #------------------------------------------------------------------------------
 
-# here we are fitting:
-#         R = b1*S / (b2 + S)
-# i.e.  1/R = S / b1*S  + b2 / (b1*S)
-#           = 1/b2 + b2/b1 * 1/S
-#           = a1 + a2 * 1/S
+# starting values for b1 and b2
+b1 <- 1000000
+b2 <- 300000
+
+# set up the other variables (i.e. S)
+S <- tuna$ssb
+
+Rpred <- b1 * S / (b2 + S)
+
+#------------------------------------------------------------------------------
+# (2) Calculate log residuals, Ln(obs/pred)
+#------------------------------------------------------------------------------
+
+# assigne observed recruitment
+Robs <- tuna$rec
+
+resids <- log(Robs / Rpred) # = log(Robs) - log(Rpred)
+
+# note that in R, log is the natural log:
+?log # see the help file for the log function
+log(exp(1))
+log(exp(10))
+
+#------------------------------------------------------------------------------
+# (3) Calculate sum of squared residuals
+#------------------------------------------------------------------------------
+
+?sum # see the help file for sum
+ssq_resids <- sum(resids^2)
+
+#------------------------------------------------------------------------------
+# (4) Minimize sum-of-squares with solver by adjusting b1 and b2
+#------------------------------------------------------------------------------
+
+# to do this, we need to set up a function that takes
+# b1 and b2 as input, and returns the sums of squared residuals
+
+# in R a function is a collection of steps: i.e.
+add <- function(b1, b2) {
+  b1 + b2
+}
+add(1, 2)
+# 3
+
+# the sums of squares function is collection of the previous 3 steps:
+ssq <- function(b1, b2) {
+  # 1. Calculate predicted R for each year
+  Rpred <- b1 * S / (b2 + S)
+  # 2. Calculate log residuals, Ln(obs/pred)
+  resids <- log(Robs / Rpred)
+  # 3. Calculate sum of squared residuals
+  ssq_resids <- sum(resids^2)
+
+  # return
+  ssq_resids
+}
+
+# lets test this out:
+ssq(b1, b2)
+ssq(1000000, 300000)
+ssq(1000000, 200000)
+
+# now we need to search over lots of values for b1 and b2 to
+# find the minimum.
+# There are lots of ways to do this, we will first look at the optim function.
+# the help file for optim is:
+?optim
+
+ssq_optim <- function(par) {
+  b1 <- par[1]
+  b2 <- par[2]
+
+  ssq(b1, b2)
+}
+
+# use c to combine the starting values into a vector
+?c
+par0 <- c(1000000, 300000)
+
+# lets test the new ssq funciton
+ssq_optim(par0)
+
+# lets run it..
+opt <- optim(par0, ssq_optim)
+
+opt
+
+
+#------------------------------------------------------------------------------
+# (5) Plot observed and predicted R
+#------------------------------------------------------------------------------
+
+# get the parameter estimates from the optimisation
+b1 <- opt$par[1]
+b2 <- opt$par[2]
+
+# predict recruitment
+Rpred <- b1 * S / (b2 + S)
+
+# plot
+plot(Robs ~ S,
+     xlim = c(0, max(S)), # set x limits
+     ylim = c(0, max(Robs)), # set y limits
+     xlab = 'Spawning Stock Biomass (tonnes)',
+     ylab = 'Age-1 Recruitment')
+
+# add predictions to the plot
+points(Rpred ~ S, col = "red", pch = 2)
+
+
+#------------------------------------------------------------------------------
+# (6) Plot residuals
+#------------------------------------------------------------------------------
+
+# calculate residuals
+resids <- log(Robs / Rpred)
+
+# plot them
+plot(resids ~ S)
+# add in a reference line
+abline(h = 0, lty = 2)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###############################################################################
+# We are now going to demonstrate the same solution, but taking advantage of
+# the tools provided by a programming / scripting language
+###############################################################################
+
+#==============================================================================
+# Beverton and holt recruitmet model R=b1*S/(b2+S)
+#==============================================================================
+
+#------------------------------------------------------------------------------
+# (1) Calculate predicted R for each year
+# Rpred = b1 * S / (b2 + S)
+#------------------------------------------------------------------------------
+
+# this time we will write a function to do this called bevholt
+#  to be safe we will also pass in S
+#  this way we know for sure wha values of S are being used
+
+bevholt <- function(b, S) {
+  b[1] * S / (b[2] + S)
+}
+
+# compute R at the starting values for b1 and b2
+Rpred <- bevholt(c(1000000, 300000), S = tuna$ssb)
+
+# lets jump to step 4 ...
+
+#------------------------------------------------------------------------------
+# (4) Minimize sum-of-squares with solver by adjusting b1 and b2
+#------------------------------------------------------------------------------
+
+# now lets modify the ssq function to accept S and Robs,
+# and use the function bevholt
+
+# the sums of squares function is collection of the previous 3 steps:
+ssq <- function(b, S, Robs) {
+  # 1. Calculate predicted R for each year
+  Rpred <- bevholt(b, S)
+  # 2. Calculate log residuals, Ln(obs/pred)
+  resids <- log(Robs / Rpred)
+  # 3. Calculate sum of squared residuals
+  ssq_resids <- sum(resids^2)
+
+  # return
+  ssq_resids
+}
+
+# lets test this out:
+ssq(c(b1, b2), tuna$ssb, tuna$rec) # what to you notice this time?
+ssq(c(1000000, 300000), tuna$ssb, tuna$rec)
+ssq(c(1000000, 200000), tuna$ssb, tuna$rec)
+
+# now we need to search over lots of values for b1 and b2 to
+# find the minimum.
+
+ssq_optim <- function(par, S, Robs) {
+  b <- exp(par)
+
+  ssq(b, S, Robs)
+}
+
+# use c to combine the starting values into a vector
+par0 <- log(c(1000000, 300000))
+
+# lets test the new ssq funciton
+ssq_optim(par0, S = tuna$ssb, Robs = tuna$rec)
+
+# lets run it..
+opt <- optim(par0, ssq_optim, S = tuna$ssb, Robs = tuna$rec)
+
+opt
+
+
+#------------------------------------------------------------------------------
+# (5) Plot observed and predicted R
+#------------------------------------------------------------------------------
+
+# predict recruitment over the full S range
+Spred <- seq(0, max(tuna$ssb), length.out = 100)
+Rpred <- bevholt(exp(opt$par), S = Spred)
+
+# plot
+plot(rec ~ ssb,
+     data = tuna, # pass in data this time
+     xlim = c(0, max(S)), # set x limits
+     ylim = c(0, max(Robs)), # set y limits
+     xlab = 'Spawning Stock Biomass (tonnes)',
+     ylab = 'Age-1 Recruitment')
+
+# add predictions to the plot as a line
+lines(Rpred ~ Spred, col = "red", pch = 2)
+
+
+
+
+
+
+
+
+
+
+
+###############################################################################
+# We are now going to demonstrate a techniques for calculating confidence
+# intervals
+###############################################################################
+
+# Bootstrapping is so called because it is like you are acheieving something
+# from nothing.
 #
-# where a1 = 1/b1 and a2 = b2/b1
+# but in fact it is taking advantage of the fact that your samle of data
+# contains information about how it varies...
+#
+# this can be seen from the residuals:
 
-g1 <- glm(rec ~ I(1/ssb), data = tuna, family = Gamma("inverse"))
-g1
+# lets run the fit again
+fit <- optim(par0, ssq_optim, S = tuna$ssb, Robs = tuna$rec)
 
-plotTunaSR()
-points(tuna$ssb, fitted(g1), col = "red")
+# and calculate the residuals
+Rpred <- bevholt(exp(fit$par), tuna$ssb)
+resids <- log( tuna$rec / Rpred)
 
-# plot predictions with CIs
-# first get predictions and confidence intervals
-tunapred <- data.frame(ssb = seq(0.1, max(tuna$ssb), length.out = 100))
-tunapred <- cbind(tunapred, predict(g1, newdata = tunapred, se.fit = TRUE))
-tunapred$pred <- 1/tunapred$fit
-tunapred$cil <- 1/(tunapred$fit + 2*tunapred$se.fit)
-tunapred$ciu <- 1/(tunapred$fit - 2*tunapred$se.fit)
+# and plot a histogram
+hist(resids, nclass = 20)
 
-# now plot over the base plot
-plotTunaSR()
-lines(tunapred$ssb, tunapred$pred, col = "red")
-lines(tunapred$ssb, tunapred$cil, col = "red", lty = 2)
-lines(tunapred$ssb, tunapred$ciu, col = "red", lty = 2)
+# the mean of the residuals is:
+mean(resids)
 
-# we can transform to get b parameters if we want
-a1 <- coef(g1)[1]; a2 <- coef(g1)[2]
-b1 <- 1/a1
-b2 <- a2 * b1
-c(b1, b2)
-lines(tunapred$ssb, b1 * tunapred$ssb/(b2 + tunapred$ssb), col = "purple", lwd = 2)
+# but is there not error in this?
 
-b1 <- 344687.4212
-b2 <- 42477.9468
-lines(tunapred$ssb, b1 * tunapred$ssb/(b2 + tunapred$ssb), col = "green", lwd = 2)
+# resample from this as if the resuduals are random and reclaculate the mean
+r_star <- sample(resids,  replace = TRUE)
+mean(r_star)
 
+# do it again
+r_star <- sample(resids, replace = TRUE)
+mean(r_star)
+
+# do it lots of times!
+rmean_star <-
+  replicate(10000, {
+    r_star <- sample(resids, replace = TRUE)
+    mean(r_star)
+  })
+
+hist(rmean_star)
 
 #------------------------------------------------------------------------------
-# (2) grid solution
-# create a grid of possible values for the estimated parameter and compute the SS
-# for each of them
+# so we are able to access the error inherent in the model fit?
+#
+# And we can propagate this through to the parameter estimates?
 #------------------------------------------------------------------------------
 
-# first set up functions to calculate the quantities we need
-predictR <- function(b) {
-  b[1] * tuna$ssb / (b[2] + tuna$ssb)
-}
+# resample from the residuals as if the resuduals are random and reestimate the
+# parameters
+r_star <- sample(resids, replace = TRUE)
+opt <- optim(par0, ssq_optim, S = tuna$ssb, Robs = Rpred + r_star)
+opt$par
 
-RSS <- function(b) {
-  pred <- predictR(b)
-  obs <- tuna$rec
-
-  lnResidual <- log(obs / pred)
-  # output
-  sum(lnResidual^2)
-}
-
-# what does this function look like?
-# make a grid of b values
-
-b1s <- seq(2, 2e6, length = 100)
-b2s <- seq(2, 4e5, length = 100)
-
-RSSgrid <- matrix(NA, length(b1s), length(b2s))
-bs <- cbind(b1s[row(RSSgrid)], b2s[col(RSSgrid)])
-RSSgrid[] <- apply(bs, 1, RSS)
+# do it again
+r_star <- sample(resids, replace = TRUE)
+opt <- optim(par0, ssq_optim, S = tuna$ssb, Robs = Rpred + r_star)
+opt$par
 
 
-# find minimum value
-xlocmin <- which.min(apply(RSSgrid, 1, min))
-ylocmin <- which.min(apply(RSSgrid, 2, min))
+# do it lots of times!
+par_star <-
+  replicate(10000, {
+    r_star <- sample(resids, replace = TRUE)
+    opt <- optim(par0, ssq_optim, S = tuna$ssb, Robs = Rpred + r_star,
+                 method = "BFGS")
+    opt$par
+  })
 
-# this is our esstimate
-b1est <- b1s[xlocmin]
-b2est <- b2s[ylocmin]
+# separate b1 and b2 bootstrap simulations for ease of inspection
+b1_star <- exp(par_star[1,])
+b2_star <- exp(par_star[2,])
 
-# check
-RSS(c(b1est, b2est))
-min(RSSgrid)
+# plot histograms of simulations
+hist(b1_star, nclass = 50)
+# add confidence intervals
+abline(v = quantile(b1_star, c(0.025, 0.975)), col = "red")
+quantile(b1_star, c(0.025, 0.975))
 
-plot(b1s, apply(RSSgrid, 1, min), type = "l", ylim = c(min(RSSgrid), 5))
+# what does the 2D bootstrap simulation look like?
+plot(b1_star, b1_star, pch = ".", col = grey(.5, alpha = 0.5))
 
-plot(b2s, apply(RSSgrid, 2, min), type = "l", ylim = c(min(RSSgrid), 5))
-
-# now plot the profiled minimum
-image(b1s, b2s, RSSgrid, col = rainbow(100), las = 1, zlim = c(min(RSSgrid), 4.8))
-contour(b1s, b2s, RSSgrid, add = TRUE, levels = c(4.3, 5, 10, 20, 40, 60, 80, 100))
-points(b1est, b2est, pch = 3, col = "blue")
-lines(b1s, b2s[apply(RSSgrid, 1, which.min)], col = "white", lwd = 2)
-
-
-
-
-
-# first set up functions to calculate the quantities we need
-predictR <- function(a) {
-  1/(a[1] + a[2]/tuna$ssb)
-}
-
-RSS <- function(b) {
-  pred <- predictR(b)
-  obs <- tuna$rec
-
-  lnResidual <- log(obs / pred)
-  # output
-  sum(lnResidual^2)
-}
-
-# what does this function look like?
-# make a grid of b values
-
-b1s <- seq(1e-7, 7e-6, length = 100)
-b2s <- seq(0.05, 0.2, length = 100)
-
-RSSgrid <- matrix(NA, length(b1s), length(b2s))
-bs <- cbind(b1s[row(RSSgrid)], b2s[col(RSSgrid)])
-RSSgrid[] <- apply(bs, 1, RSS)
-
-
-# find minimum value
-xlocmin <- which.min(apply(RSSgrid, 1, min))
-ylocmin <- which.min(apply(RSSgrid, 2, min))
-
-# this is our esstimate
-b1est <- b1s[xlocmin]
-b2est <- b2s[ylocmin]
-
-# check
-RSS(c(b1est, b2est))
-min(RSSgrid)
-
-plot(b1s, apply(RSSgrid, 1, min), type = "l")
-
-plot(b2s, apply(RSSgrid, 2, min), type = "l")
-
-# now plot the profiled minimum
-image(b1s, b2s, RSSgrid, col = rainbow(100), las = 1, zlim = c(min(RSSgrid), 5))
-contour(b1s, b2s, RSSgrid, add = TRUE, levels = c(4.3, 5, 10, 20, 40, 60, 80, 100))
-points(b1est, b2est, pch = 3, col = "blue")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# plot as a contour
-z <- RSSgrid
-z[z>10] <- 10
-x <- b1s
-y <- b2s
-nrz <- nrow(z)
-ncz <- ncol(z)
-# Create a function interpolating colors in the range of specified colors
-jet.colors <- colorRampPalette( c("blue", "green", "red", "yellow") )
-# Generate the desired number of colors from this palette
-nbcol <- 100
-color <- rev(jet.colors(nbcol))
-# Compute the z-value at the facet centres
-zfacet <- (z[-1, -1] + z[-1, -ncz] + z[-nrz, -1] + z[-nrz, -ncz])/4
-# Recode facet z-values into color indices
-facetcol <- cut(zfacet, nbcol)
-#persp(x, y, z, col = color[facetcol], phi = 30, theta = -30, axes=T, ticktype='detailed')
-
-persp(x, y, z, col = color[facetcol], theta = 140, phi = 20, expand = 0.5,
-      shade = 0.15, border = NA, box = FALSE)
-
-
-
-
-
-llfunc <- function(logb1, logb2, logsigma) {
-  # the pdf is https://en.wikipedia.org/wiki/Log-normal_distribution
-  # 1/(x * sigma * 2 * pi) * exp(-0.5 * ((log(x) - mu)/sigma)^2)
-
-  x <- tuna$rec
-  mu <- log(predictR(exp(b1), exp(b2)))
-  sigma <- exp(sigma)
-  -1 * sum(-log(x * sigma * 2 * pi) -  0.5 * ((log(x) - mu)/sigma)^2)
-}
-
-# test it out
-# create vector of possible values for b1
-b1s <- seq(1, 1e4, length = 50)
-
-
-
-# calculate likelihood for each sigma
-lls <- sapply(b1s, function(x) llfunc(x, 300000, 0.2))
-
-# plot SS profile
-plot(b1s, lls, type='l', lwd=2, col='red')
-  abline(min(lls), 0, lty=2)
-
-
-
-# plot residual patterns in time
-plot(year, grid[,names(ss)[ss==min(ss)]], type='b', pch=19)
-  abline(0, 0, lty=2)
-
-b <- names(ss)[ss == min(ss)]
-
+# a colourful 2d densty plot
+image(MASS::kde2d(b1_star, b2_star, n = 400))
 
