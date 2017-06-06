@@ -394,3 +394,8 @@ plot(b1_star, b1_star, pch = ".", col = grey(.5, alpha = 0.5))
 # a colourful 2d densty plot
 image(MASS::kde2d(b1_star, b2_star, n = 400))
 
+
+
+
+
+## residuals
