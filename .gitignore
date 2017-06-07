@@ -34,4 +34,6 @@ vignettes/*.pdf
 .Rproj.user
 *.Rproj
 previous_matierial/*
+ICES_presentations/*
+d4science*
 userconfig.csv
