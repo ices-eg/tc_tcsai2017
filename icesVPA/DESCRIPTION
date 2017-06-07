@@ -1,0 +1,8 @@
+Package: icesVPA
+Version: 1.0-0
+Date: 2017-06-07
+Title: Virtual Population Analysis
+Authors@R: c(person("Arni", "Magnusson", role=c("aut","cre"), email="arni.magnusson@ices.dk"))
+Description: Function to run simple VPA models.
+License: GPL (>= 2)
+RoxygenNote: 6.0.1
