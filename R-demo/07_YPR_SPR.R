@@ -157,7 +157,6 @@ ypr <- function(F) {
 
   # first lets set up all the things we need
   #-----------------------------------------------------
-
   a <- 1:20
   Pa <- numeric(20)
   Na <- numeric(20)
@@ -174,7 +173,6 @@ ypr <- function(F) {
   ma <- numeric(20)
   ma[1:8] <- 0
   ma[9:20] <- 1
-
 
   # now the modelling:
   #-----------------------------------------------------
@@ -278,9 +276,9 @@ ypr_optim(1)
 opt <- optimize(ypr_optim, interval = c(0,1), maximum = TRUE)
 Fmax <- opt$maximum
 
-
 #------------------------------------------------------------------------------
-# (17) According to the VPA results and the YPR results, what was the status of the tuna fishery in 2007?
+# (17) According to the VPA results and the YPR results, what was the
+# status of the tuna fishery in 2007?
 #------------------------------------------------------------------------------
 
 plot(vpafit$F[,11], type = "l")
@@ -290,4 +288,14 @@ abline(h = Fmax)
 #------------------------------------------------------------------------------
 # (18) Extra Credit: What is F40%?
 #------------------------------------------------------------------------------
+
+# use linear interpolation to get the value of F when SPR is 0.4 SPR when F = 0
+apprx <- approx(results["SPR",], Fsteps, xout = results["SPR",1] * 0.4)
+F40 <- apprx$y
+
+# spr plot
+plot(Fsteps, results["SPR",], type = "b",
+     ylab = "Spawners per recruit", las = 1)
+# a line showing F40
+lines(c(F40, F40), c(0, SPR * 0.4), col = "red")
 
