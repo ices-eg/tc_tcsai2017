@@ -41,7 +41,7 @@ str(vpafit)
 # (1) Calculate partial recruitment for ages 1 to 20: Pa=Fa/Ffull, assuming P16+=P15
 #------------------------------------------------------------------------------
 
-# create a container for partial recruitment
+# create a container for partial F
 a <- 1:20
 Pa <- numeric(20)
 
