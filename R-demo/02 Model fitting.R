@@ -14,7 +14,7 @@ rm(list = ls())
 #==============================================================================
 
 # load data from comma-separated file to data.frame
-tuna <- read.csv(file = 'WBFT_S-R.csv', header = TRUE)
+tuna <- read.csv(file = 'R-demo/WBFT_S-R.csv', header = TRUE)
 
 # take a look at what we have
 head(tuna) # this looks at the first 6 rows
