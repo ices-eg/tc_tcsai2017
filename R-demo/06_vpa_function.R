@@ -33,7 +33,7 @@ vpa <- function(C, M, Fterm, Fages)
   N <- C*Z / (F*(1-exp(-Z)))
 
   ## Calculate N and F up to terminal year,
-  ## assuming F[oldest] = avg(5 preceding ages)
+  ## assuming F[oldest] = avg(preceding ages)
   for(t in (T-1):1)
   {
     for(a in 1:(A-1))
