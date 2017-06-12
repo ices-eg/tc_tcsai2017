@@ -26,3 +26,7 @@ the input objects passed by the user (\code{C}, \code{M}, \code{Fterm},
 \description{
 Run simple VPA model, with no tuning index.
 }
+\examples{
+vpa(bluefin_catage, 0.14, 0.1, 5)
+
+}

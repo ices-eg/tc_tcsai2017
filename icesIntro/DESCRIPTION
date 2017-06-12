@@ -1,8 +1,9 @@
 Package: icesIntro
-Version: 1.0-0
-Date: 2017-06-07
+Version: 1.1-0
+Date: 2017-06-12
 Title: ICES Introduction to Stock Assessment
 Authors@R: c(person("Arni", "Magnusson", role=c("aut","cre"), email="arni.magnusson@ices.dk"))
+LazyData: yes
 Description: Functions to demonstrate age-structured stock assessment methods.
 License: GPL (>= 2)
 RoxygenNote: 6.0.1

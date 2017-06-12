@@ -15,6 +15,9 @@
 #' the input objects passed by the user (\code{C}, \code{M}, \code{Fterm},
 #' \code{Fages}).
 #'
+#' @examples
+#' vpa(bluefin_catage, 0.14, 0.1, 5)
+#'
 #' @export
 
 vpa <- function(C, M, Fterm, Fages)
@@ -33,7 +36,7 @@ vpa <- function(C, M, Fterm, Fages)
   N <- C*Z / (F*(1-exp(-Z)))
 
   ## Calculate N and F up to terminal year,
-  ## assuming F[oldest] = avg(5 preceding ages)
+  ## assuming F[oldest] = avg(preceding ages)
   for(t in (T-1):1)
   {
     for(a in 1:(A-1))
