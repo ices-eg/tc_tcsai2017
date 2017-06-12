@@ -1,8 +1,8 @@
-Package: icesVPA
+Package: icesIntro
 Version: 1.0-0
 Date: 2017-06-07
-Title: Virtual Population Analysis
+Title: ICES Introduction to Stock Assessment
 Authors@R: c(person("Arni", "Magnusson", role=c("aut","cre"), email="arni.magnusson@ices.dk"))
-Description: Function to run simple VPA models.
+Description: Functions to demonstrate age-structured stock assessment methods.
 License: GPL (>= 2)
 RoxygenNote: 6.0.1
